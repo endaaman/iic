@@ -5,10 +5,16 @@ from errno import ENOENT
 from enum import Enum, auto
 
 import numpy as np
-import cv2
+from PIL import Image
 import scipy.ndimage
 from torchvision.transforms import ToTensor, Normalize, Compose
 from torch.utils.data import Dataset, DataLoader
+from augmix import Augmentations, augment_and_mix, normalize, unnormalize
+
+from matplotlib import pyplot as plt
+
+
+Augmentations.IMAGE_SIZE = 150
 
 
 class Target(Enum):
@@ -30,7 +36,7 @@ J = os.path.join
 
 
 def read_image(name):
-    raw = cv2.imread(name, cv2.IMREAD_UNCHANGED)
+    raw = np.array(Image.open(name))
     if not type(raw) is np.ndarray:
         raise FileNotFoundError(ENOENT, os.strerror(ENOENT), name)
     return raw
@@ -69,7 +75,20 @@ class BaseDataset(Dataset):
 
 if __name__ == '__main__':
     ds = BaseDataset()
-    for i in ds:
-        i.load()
-        print(i.x.shape)
+    for i, item in enumerate(ds):
+        if i != 4:
+            continue
+        item.load()
+        mixed = []
+        for _ in range(7):
+            a = augment_and_mix(item.x.astype(np.float32))
+            # a = unnormalize(a)
+            mixed.append(a)
+        fig = plt.figure(figsize=(8, 8))
+        fig.add_subplot(2, 4, 1)
+        plt.imshow(item.x)
+        for j, m in enumerate(mixed):
+            fig.add_subplot(2, 4, j + 2)
+            plt.imshow(m.astype(np.uint8))
+        plt.show()
         break
